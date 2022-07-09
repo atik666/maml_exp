@@ -163,7 +163,34 @@ for k in tqdm(range(len(image_array_cluster))):
     sim_val = np.mean([sum(similarity[0][i])/batch_size for i in range(batch_size)])
     sim_val_array.append(sim_val)
 
-  
 
+""""""
+
+img2 =  np.array([images[0][0][i].mean(axis=2).flatten() for i in range(len(images[0][0]))])
+img2 = np.array(img2)
+
+def normalizeData(data):
+    return (data - np.min(data)) / (np.max(data) - np.min(data))
+
+norm_img2 = normalizeData(img2)
+
+from sklearn.decomposition import PCA
+pca = PCA(2)
+
+data = pca.fit_transform(norm_img2)
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(10,10))
+var = np.round(pca.explained_variance_ratio_*100, decimals = 1)
+lbls = ['PC'+ str(x) for x in range(1,len(var)+1)]
+plt.bar(x=range(1,len(var)+1), height = var, tick_label = lbls)
+plt.ylabel('Variance')
+plt.show()
+
+centroid = np.expand_dims(data.mean(axis=0), axis = 0)
+
+dist = [np.linalg.norm(data[i] - centroid) for i in range(len(data))]
+
+index_min = np.argmin(dist)
 
 
