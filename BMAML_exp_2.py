@@ -6,6 +6,7 @@ import cv2
 import random
 from tqdm import tqdm
 import copy
+from sklearn.decomposition import PCA
 
 root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
 
@@ -84,17 +85,13 @@ class_num = len(classes)
 batch_size = int(len(classes[0])/batch)
 
 images = []
-class_files = []
 for k in tqdm(range(class_num)):
 
-    classes_n = [classes[k][i:i+batch_size] \
-                 for i in range(0, len(classes[k]), batch_size)]
+    #classes_n = [classes[k] for i in range(0, len(classes[k]), batch_size)]
     
-    images_n = [[cv2.imread(os.path.join(root, mood, '')+classes_n[j][i]) \
-                for i in range(len(classes_n[j]))] for j in range(len(classes_n))]
+    images_n = [cv2.imread(os.path.join(root, mood, '')+classes[k][j]) for j in range(len(classes[k]))]
         
     images.append(images_n)
-    class_files.append(classes_n)
     
     
 file_new = copy.deepcopy(file)
@@ -174,7 +171,6 @@ def normalizeData(data):
 
 norm_img2 = normalizeData(img2)
 
-from sklearn.decomposition import PCA
 pca = PCA(2)
 
 data = pca.fit_transform(norm_img2)
@@ -192,5 +188,47 @@ centroid = np.expand_dims(data.mean(axis=0), axis = 0)
 dist = [np.linalg.norm(data[i] - centroid) for i in range(len(data))]
 
 index_min = np.argmin(dist)
+
+
+def rep_image(images: list) -> list:
+    
+    indexes = []
+    for j in tqdm(range(len(images))):
+    
+        img2 =  np.array([images[j][i].mean(axis=2).flatten() for i in range(len(images[j]))])
+        img2 = np.array(img2)
+    
+        norm_img2 = normalizeData(img2)
+    
+        pca = PCA(2)
+    
+        data = pca.fit_transform(norm_img2)
+    
+        centroid = np.expand_dims(data.mean(axis=0), axis = 0)
+    
+        dist = [np.linalg.norm(data[i] - centroid) for i in range(len(data))]
+    
+        index_min = np.argmin(dist)
+        indexes.append(index_min)
+        
+        class_rep = [classes[i][indexes[i]] for i in range(len(indexes))]
+    
+    return class_rep
+
+indx = rep_image(images)
+
+indx_neg = rep_image(image_array_cluster)
+
+img_pos = [cv2.imread(path+indx[i]) for i in range(len(indx))]
+img_neg = [cv2.imread(path+indx_neg[i]) for i in range(len(indx_neg))]
+
+sim_val_indx = []
+for k in tqdm(range(len(img_pos))):
+
+    sim_val_array.append(sim_val)
+    
+    similarity = [orb_sim(img_pos[k], img_neg[i]) for i in range(len(img_neg))] 
+    sim_indx = np.argmin(similarity)
+    sim_val_indx.append(sim_indx)
 
 
