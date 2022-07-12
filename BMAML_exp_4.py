@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 import sys
 import random
 import pickle
-sys.setrecursionlimit(30000)
+sys.setrecursionlimit(3000)
 print("Python Recursive Limitation = ", sys.getrecursionlimit())
 
 root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
