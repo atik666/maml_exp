@@ -29,7 +29,7 @@ root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
 
 # file = list(dictLabels.values())
 
-def load_files(loc: str) -> list:
+def load_files(root: str) -> list:
     
     global mood
     path = os.path.join(root, mood, '')
@@ -54,7 +54,6 @@ file = load_files(root)
 
 path = os.path.join(root, mood, '')  
 
-class_num = 0
 
 # random.shuffle(file[class_num])
 # samples = file[class_num][0:num_samples]
@@ -151,14 +150,14 @@ def orb_sim(img1, img2):
     return 0
   return len(similar_regions) / len(matches)
 
-sim_val_array = []
-for k in tqdm(range(len(image_array_cluster))):
+# sim_val_array = []
+# for k in tqdm(range(len(image_array_cluster))):
 
-    similarity = [[[orb_sim(images[0][0][j], image_array_cluster[k][i]) \
-                   for i in range(batch_size)] for j in range(batch_size)]]
+#     similarity = [[[orb_sim(images[0][0][j], image_array_cluster[k][i]) \
+#                    for i in range(batch_size)] for j in range(batch_size)]]
     
-    sim_val = np.mean([sum(similarity[0][i])/batch_size for i in range(batch_size)])
-    sim_val_array.append(sim_val)
+#     sim_val = np.mean([sum(similarity[0][i])/batch_size for i in range(batch_size)])
+#     sim_val_array.append(sim_val)
 
 
 """"""
@@ -224,8 +223,6 @@ img_neg = [cv2.imread(path+indx_neg[i]) for i in range(len(indx_neg))]
 
 sim_val_indx = []
 for k in tqdm(range(len(img_pos))):
-
-    sim_val_array.append(sim_val)
     
     similarity = [orb_sim(img_pos[k], img_neg[i]) for i in range(len(img_neg))] 
     sim_indx = np.argmin(similarity)
