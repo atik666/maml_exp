@@ -8,6 +8,7 @@ import copy
 from sklearn.decomposition import PCA
 import sys
 import random
+import pickle
 sys.setrecursionlimit(30000)
 print("Python Recursive Limitation = ", sys.getrecursionlimit())
 
@@ -131,7 +132,27 @@ indx = rep_image(images, classes)
 
 indx_neg = [rep_image(neg_images[i], neg_clusters[i]) for i in tqdm(range(len(neg_images)))]
 
+img_pos_array = [cv2.imread(path+indx[i]) for i in range(len(indx))]
 
+img_neg_array = [[cv2.imread(path+indx_neg[j][i]) for i in range(len(indx_neg[0]))] \
+                for j in range(len(indx_neg))]
 
+similarity = [[orb_sim(img_pos_array[j], img_neg_array[j][i]) for i in range(len(image_array_cluster))] \
+              for j in tqdm(range(len(img_pos_array)))]
+
+index_min = [np.argmin(similarity[i]) for i in range(len(similarity))]
+
+final_neg_classes = []
+
+final_neg_classes = [neg_clusters[i][e] for i, e in enumerate(index_min)]
+
+with open("final_neg_classes", "wb") as fp:
+    pickle.dump(final_neg_classes, fp)
+
+with open("final_pos_classes", "wb") as fp:
+    pickle.dump(classes, fp)
+
+with open("final_pos_classes", "rb") as fp:
+    file = pickle.load(fp)
 
 
