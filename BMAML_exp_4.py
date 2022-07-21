@@ -9,11 +9,11 @@ from sklearn.decomposition import PCA
 import sys
 import random
 import pickle
-sys.setrecursionlimit(3000)
+sys.setrecursionlimit(300000)
 print("Python Recursive Limitation = ", sys.getrecursionlimit())
 
 root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
-mood = 'train'
+mood = 'test'
 path = os.path.join(root, mood, '')  
 
 def load_files(path: str) -> list:
@@ -43,15 +43,46 @@ for k in tqdm(range(class_num)):
     images_n = [cv2.imread(path+classes[k][j]) for j in range(len(classes[k]))]    
     images.append(images_n)
 
+# from more_itertools import chunked
+# chunked_list = list(chunked(file, 4))
+
+# with tqdm(total=len(classes)*cluster_num*len(chunked_list[0])) as pbar:
+#     for current_class in tqdm(range(len(classes))):
+#         file_new = copy.deepcopy(file)
+#         random.shuffle(file_new)
+#         class_array_cluster = []
+#         image_array_cluster = []
+#         for j in tqdm(range(cluster_num)):
+#             class_array = []
+#             image_temp = []
+#             for i in range(len(file[0])):
+#                 rand_class = int(np.random.randint(len(file_new),size=(1, 1)))
+                
+#                 while rand_class == current_class or len(file_new[rand_class]) == 0:
+#                     rand_class = int(np.random.randint(len(file_new),size=(1, 1)))
+                
+#                 rand_image = int(np.random.randint(len(file_new[rand_class]),size=(1, 1)))
+        
+#                 file_array = file_new[rand_class][rand_image]
+#                 file_new[rand_class].remove(file_new[rand_class][rand_image])
+#                 class_array.append(file_array)
+#                 image_temp.append(cv2.imread(path+file_array))
+#                 pbar.update(1)
+                
+#             class_array_cluster.append(class_array)
+#             image_array_cluster.append(image_temp)
+            
+#         neg_clusters.append(class_array_cluster)
+#         neg_images.append(image_array_cluster)
+
 cluster_num = 10
 
 neg_clusters = []
 neg_images = []
-
 with tqdm(total=len(classes)*cluster_num*len(file[0])) as pbar:
     for current_class in tqdm(range(len(classes))):
         file_new = copy.deepcopy(file)
-        random.shuffle(file_new)
+        # random.shuffle(file_new)
         class_array_cluster = []
         image_array_cluster = []
         for j in tqdm(range(cluster_num)):
@@ -142,17 +173,15 @@ similarity = [[orb_sim(img_pos_array[j], img_neg_array[j][i]) for i in range(len
 
 index_min = [np.argmin(similarity[i]) for i in range(len(similarity))]
 
-final_neg_classes = []
-
 final_neg_classes = [neg_clusters[i][e] for i, e in enumerate(index_min)]
 
-with open("final_neg_classes", "wb") as fp:
+with open("final_neg_classes_%s_%s" %(mood, cluster_num), "wb") as fp:
     pickle.dump(final_neg_classes, fp)
 
-with open("final_pos_classes", "wb") as fp:
+with open("final_pos_classes_%s_%s" %(mood, cluster_num), "wb") as fp:
     pickle.dump(classes, fp)
 
-with open("final_pos_classes", "rb") as fp:
-    file = pickle.load(fp)
+# with open("final_pos_classes_%s" %cluster_num, "rb") as fp:
+#     file = pickle.load(fp)
 
 
