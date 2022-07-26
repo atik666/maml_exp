@@ -7,25 +7,26 @@ from tqdm import tqdm
 import copy
 from sklearn.decomposition import PCA
 import sys
-import random
-import pickle
 sys.setrecursionlimit(300000)
 print("Python Recursive Limitation = ", sys.getrecursionlimit())
 
-
+# class for generating the data
 class BMAML():
     
-    def __init__(self, root, mode, cluster_num):
-        self.path = os.path.join(root, mode, '')  
-        self.cluster_num = cluster_num
+    def __init__(self, root, mode, cluster_num): # main dir, data mode, cluster to be considered
+        self.path = os.path.join(root, mode, '')  # actual dir
+        self.cluster_num = cluster_num # number of cluster considered
         
-        self.file = self.load_files(self.path)  
-        self.classes = copy.deepcopy(self.file)
-        self.images = self.images(self.file)
-        """"""
-        self.neg_clusters, self.neg_images, self.image_array_cluster = self.neg_clusters()
+        self.file = self.load_files(self.path)  # selected file path from load_files function
+        self.classes = copy.deepcopy(self.file) # copy of file
+        self.images = self.images(self.file) # image array from selected file path
+        """""" 
+        # all selected neg img path, all selected neg img array, neg temp img all 
+        self.neg_clusters, self.neg_images, self.image_array_cluster = self.neg_clusters() 
+        # postive representive image index
         self.indx = self.rep_image(self.images, self.classes)
-                
+      
+    # loading postive file path          
     def load_files(self, path: str) -> list:
         
         filenames = next(walk(path))[1]
@@ -43,6 +44,7 @@ class BMAML():
 
         return list(dictLabels.values())
     
+    # loading postive img array
     def images(self, file):
         class_num = len(self.file)
 
@@ -53,6 +55,7 @@ class BMAML():
         
         return images
     
+    # selecting neg image cluster
     def neg_clusters(self):
         neg_clusters = []
         neg_images = []
@@ -87,9 +90,11 @@ class BMAML():
                 
         return neg_clusters, neg_images, image_array_cluster
 
+    # normalize
     def normalizeData(self, data):
         return (data - np.min(data)) / (np.max(data) - np.min(data))
     
+    # representive image for a class
     def rep_image(self, images: list, classes: list) -> list:
         
         indexes = []
@@ -115,6 +120,7 @@ class BMAML():
         
         return class_rep
     
+    # ORB similarity
     def orb_sim(img1, img2):
         
       orb = cv2.ORB_create()
@@ -137,30 +143,32 @@ class BMAML():
         return 0
       return len(similar_regions) / len(matches)
         
+    # returning final neg class and postive class path
     def return_item(self):
+        # neg rep index
         indx_neg = [self.rep_image(self.neg_images[i], self.neg_clusters[i]) \
-                    for i in tqdm(range(len(self.neg_images)))]
-            
+                    for i in tqdm(range(len(self.neg_images)))] 
+        # load pos img array    
         img_pos_array = [cv2.imread(self.path+self.indx[i]) for i in range(len(self.indx))]
-
+        # load neg img array  
         img_neg_array = [[cv2.imread(self.path+indx_neg[j][i]) for i in range(len(indx_neg[0]))] \
                         for j in range(len(indx_neg))]
-
+        # similarity between pos and neg images
         similarity = [[self.orb_sim(img_pos_array[j], img_neg_array[j][i]) for i in range(len(self.image_array_cluster))] \
                       for j in tqdm(range(len(img_pos_array)))]
-
+        # most similar index
         index_min = [np.argmin(similarity[i]) for i in range(len(similarity))]
-
+        # selected final neg class
         final_neg_classes = [self.neg_clusters[i][e] for i, e in enumerate(index_min)]
         
-        return final_neg_classes, self.classes
+        return final_neg_classes, self.classes # selected neg cluster path, selected pos cluster path
     
 root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
 mode = 'test'    
 
 # a = BMAML(root,mode, 2).rep_image()
         
-final_neg_classes, classes = BMAML(root,mode, 2).return_item()
+final_neg_classes, classes = BMAML(root, mode, 1).return_item() # takes approx. 2 hours to compute on RTX3080ti
         
         
         

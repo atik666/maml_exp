@@ -70,12 +70,12 @@ class MiniImagenet(Dataset):
     def loadCSV(self, root, mode):
         
         if mode == 'train':
-            with open("final_pos_classes_10", "rb") as fp:
+            with open("final_pos_classes", "rb") as fp:
                 file = pickle.load(fp)
             
             file_dict = {v: k for v, k in enumerate(file)}
             
-            with open("final_neg_classes_10", "rb") as fp:
+            with open("final_neg_classes", "rb") as fp:
                 file_neg = pickle.load(fp)
             
             file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
@@ -88,12 +88,12 @@ class MiniImagenet(Dataset):
             
         elif mode == 'test':
 
-            with open("final_pos_classes_test_10", "rb") as fp:
+            with open("final_pos_classes_test", "rb") as fp:
                 file = pickle.load(fp)
             
             file_dict = {v: k for v, k in enumerate(file)}
             
-            with open("final_neg_classes_test_10", "rb") as fp:
+            with open("final_neg_classes_test", "rb") as fp:
                 file_neg = pickle.load(fp)
             
             file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
@@ -505,7 +505,7 @@ def mean_confidence_interval(accs, confidence=0.95):
 
 
 n_way = 2
-epochs = 25
+epochs = 41
 
 
 def main():
@@ -547,11 +547,11 @@ def main():
     # batchsz here means total episode number
     
     path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
-    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=5,
+    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=20,
                         k_query=15,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=5,
-                             k_query=15,
+    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=15,
+                             k_query=5,
                              batchsz=100, resize=84)
 
     for epoch in tqdm(range(epochs)):
@@ -583,7 +583,4 @@ def main():
                 print('Test acc:', accs)
 
 main()    
-
-
-
 
