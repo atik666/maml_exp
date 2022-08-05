@@ -5,7 +5,8 @@ from torchvision.transforms import transforms
 import numpy as np
 from PIL import Image
 import random
-
+from os import walk
+import glob
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -57,25 +58,33 @@ class MiniImagenet(Dataset):
         self.path = os.path.join(root, mode)  # image path
         
         # :return: dictLabels: {label1: [filename1, filename2, filename3, filename4,...], }
-        dictLabels = self.loadCSV(root, mode)  # csv path
+        dictLabels, dictLabels1 = self.loadCSV(root, mode)  # csv path
+        #print(dictLabels1)
         self.data = []
         self.img2label = {}
         for i, (label, imgs) in enumerate(dictLabels.items()):
             self.data.append(imgs)  # [[img1, img2, ...], [img111, ...]]
             self.img2label[label] = i + self.startidx  # {"img_name[:9]":label}
         self.cls_num = len(self.data)
+        
+        self.data1 = []
+        self.img2label1 = {}
+        for i, (label1, imgs1) in enumerate(dictLabels1.items()):
+            self.data1.append(imgs1)  # [[img1, img2, ...], [img111, ...]]
+            self.img2label1[label] = i + self.startidx  # {"img_name[:9]":label}
+        self.cls_num1 = len(self.data1)
 
         self.create_batch(self.batchsz)
 
     def loadCSV(self, root, mode):
         
         if mode == 'train':
-            with open("final_pos_classes_10", "rb") as fp:
+            with open(root+"/"+"final_pos_classes_10", "rb") as fp:
                 file = pickle.load(fp)
             
             file_dict = {v: k for v, k in enumerate(file)}
             
-            with open("final_neg_classes_10", "rb") as fp:
+            with open(root+"/"+"final_neg_classes_10", "rb") as fp:
                 file_neg = pickle.load(fp)
             
             file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
@@ -88,12 +97,12 @@ class MiniImagenet(Dataset):
             
         elif mode == 'test':
 
-            with open("final_pos_classes_test_10", "rb") as fp:
+            with open(root+"/"+"final_pos_classes_test_10", "rb") as fp:
                 file = pickle.load(fp)
             
             file_dict = {v: k for v, k in enumerate(file)}
             
-            with open("final_neg_classes_test_10", "rb") as fp:
+            with open(root+"/"+"final_neg_classes_test_10", "rb") as fp:
                 file_neg = pickle.load(fp)
             
             file_neg_dict = {v+256: k for v, k in enumerate(file_neg)}
@@ -104,7 +113,25 @@ class MiniImagenet(Dataset):
             
             dictLabels = Merge(file_dict, file_neg_dict)
 
-        return dictLabels
+        mode = mode+'/'
+        path1 = os.path.join(root, mode) 
+        
+        filenames1 = next(walk(path1))[1]
+    
+        dictLabels1 = {}
+        
+        for i in range(len(filenames1)):  
+            img1 = []
+            for images1 in glob.iglob(f'{path1+filenames1[i]}/*'):
+                # check if the image ends with png
+                if (images1.endswith(".jpg")):
+                    img_temp1 = images1[len(path1+filenames1[i]+'/'):]
+                    img_temp1 = filenames1[i]+'/'+img_temp1
+                    img1.append(img_temp1)
+                
+                dictLabels1[filenames1[i]] = img1
+
+        return dictLabels, dictLabels1
 
     def create_batch(self, batchsz):
         """
@@ -121,6 +148,7 @@ class MiniImagenet(Dataset):
             selected_cls_pos = np.random.choice(int(self.cls_num/2), 1, False)  # no duplicate
             selected_cls_neg = selected_cls_pos+256 # no duplicate
             selected_cls = np.concatenate((selected_cls_pos, selected_cls_neg), axis=0)
+            np.random.shuffle(selected_cls)
             support_x = []
             query_x = []
             selected_classes_temp = []
@@ -142,6 +170,37 @@ class MiniImagenet(Dataset):
             self.support_x_batch.append(support_x)  # append set to current sets
             self.query_x_batch.append(query_x)  # append sets to current sets
             self.selected_classes.append(selected_classes_temp)
+            
+            """"""
+            
+            self.support_x_batch1 = []  # support set batch
+            self.query_x_batch1 = []  # query set batch
+            self.selected_classes1 = []
+            for b in range(batchsz):  # for each batch
+                # 1.select n_way classes randomly
+                selected_cls1 = np.random.choice(self.cls_num1, self.n_way, False)  # no duplicate
+                np.random.shuffle(selected_cls1)
+                support_x1 = []
+                query_x1 = []
+                selected_classes_temp1 = []
+                for cls in selected_cls1:
+                    # 2. select k_shot + k_query for each class
+                    selected_imgs_idx1 = np.random.choice(len(self.data1[cls]), self.k_shot + self.k_query, False)
+                    np.random.shuffle(selected_imgs_idx1)
+                    indexDtrain1 = np.array(selected_imgs_idx1[:self.k_shot])  # idx for Dtrain
+                    indexDtest1 = np.array(selected_imgs_idx1[self.k_shot:])  # idx for Dtest
+                    support_x1.append(
+                        np.array(self.data1[cls])[indexDtrain1].tolist())  # get all images filename for current Dtrain
+                    query_x1.append(np.array(self.data1[cls])[indexDtest1].tolist())
+                    selected_classes_temp1.append(cls)
+        
+                # shuffle the correponding relation between support set and query set
+                # random.shuffle(support_x)
+                # random.shuffle(query_x)
+        
+                self.support_x_batch1.append(support_x1)  # append set to current sets
+                self.query_x_batch1.append(query_x1)  # append sets to current sets
+                self.selected_classes1.append(selected_classes_temp1)
 
     def __getitem__(self, index):
         """
@@ -201,7 +260,69 @@ class MiniImagenet(Dataset):
 
         for i, path in enumerate(flatten_query_x):
             query_x[i] = self.transform(path)
+            
+        #print(support_x)
+        """"""
+        # [setsz, 3, resize, resize]
+        support_x1 = torch.FloatTensor(self.setsz, 3, self.resize, self.resize)
+        # [setsz]
+        #support_y = np.zeros((self.setsz), dtype=np.int32)
+        # [querysz, 3, resize, resize]
+        query_x1 = torch.FloatTensor(self.querysz, 3, self.resize, self.resize)
+        # [querysz]
+        #query_y = np.zeros((self.querysz), dtype=np.int32)
 
+        flatten_support_x1 = [os.path.join(self.path, item)
+                             for sublist in self.support_x_batch1[index] for item in sublist]
+        # support_y = np.array(
+        #     [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
+        #      for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
+        
+        support_y_list1 = []
+        for i in range(len(self.support_x_batch1[index])):
+            class_temp1 = np.repeat(self.selected_classes1[index][i], len(self.support_x_batch1[index][i]))
+            support_y_list1.append(class_temp1)
+        support_y1 = np.array(support_y_list1).flatten().astype(np.int32)
+
+        flatten_query_x1 = [os.path.join(self.path, item)
+                           for sublist in self.query_x_batch1[index] for item in sublist]
+        # query_y = np.array([self.img2label[item[:9]]
+        #                     for sublist in self.query_x_batch[index] for item in sublist]).astype(np.int32)
+        
+        query_y_list1 = []
+        for i in range(len(self.query_x_batch1[index])):
+            class_temp1 = np.repeat(self.selected_classes1[index][i], len(self.query_x_batch1[index][i]))
+            query_y_list1.append(class_temp1)
+        query_y1 = np.array(query_y_list1).flatten().astype(np.int32)
+
+        # print('global:', support_y, query_y)
+        # support_y: [setsz]
+        # query_y: [querysz]
+        # unique: [n-way], sorted
+        unique1 = np.unique(support_y1)
+        random.shuffle(unique1)
+        # relative means the label ranges from 0 to n-way
+        support_y_relative1 = np.zeros(self.setsz)
+        query_y_relative1 = np.zeros(self.querysz)
+        for idx, l in enumerate(unique):
+            support_y_relative1[support_y == l] = idx
+            query_y_relative1[query_y1 == l] = idx
+
+        # print('relative:', support_y_relative, query_y_relative)
+
+        for i, path in enumerate(flatten_support_x1):
+            support_x1[i] = self.transform(path)
+
+        for i, path in enumerate(flatten_query_x1):
+            query_x1[i] = self.transform(path)
+
+        #print(support_x1)
+        support_x = np.append(support_x, support_x1)
+        support_y_relative = np.append(support_y_relative, support_y_relative1)
+        query_x = np.append(query_x, query_x1)
+        query_y_relative = np.append(query_y_relative, query_y_relative1)
+
+        #return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
         return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
 
     def __len__(self):
@@ -505,7 +626,7 @@ def mean_confidence_interval(accs, confidence=0.95):
 
 
 n_way = 2
-epochs = 41
+epochs = 21
 
 
 def main():
@@ -547,11 +668,11 @@ def main():
     # batchsz here means total episode number
     
     path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
-    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=20,
+    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=5,
                         k_query=15,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=15,
-                             k_query=5,
+    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=5,
+                             k_query=15,
                              batchsz=100, resize=84)
 
     for epoch in tqdm(range(epochs)):
