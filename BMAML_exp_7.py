@@ -78,6 +78,23 @@ class MiniImagenet(Dataset):
 
         self.create_batch(self.batchsz)
         self.create_batch1(self.batchsz)
+        
+        if self.mode == 'train':  
+            # self.support_x_batch = self.support_x_batch +  self.support_x_batch1
+            # self.query_x_batch = self.query_x_batch +  self.query_x_batch1
+            # self.selected_classes = self.selected_classes +  self.selected_classes1
+            self.support_x_batch = self.support_x_batch1
+            self.query_x_batch = self.query_x_batch1
+            self.selected_classes = self.selected_classes1
+            
+        elif self.mode == 'test':
+            self.support_x_batch = self.support_x_batch
+            self.query_x_batch = self.query_x_batch
+            self.selected_classes = self.selected_classes
+
+        # self.support_x_batch = self.support_x_batch +  self.support_x_batch1
+        # self.query_x_batch = self.query_x_batch +  self.query_x_batch1
+        # self.selected_classes = self.selected_classes +  self.selected_classes1
 
     def loadCSV(self, root, mode):
         
@@ -163,6 +180,7 @@ class MiniImagenet(Dataset):
                 selected_imgs_idx = np.random.choice(len(self.data[cls]), self.k_shot + self.k_query, False)
                 np.random.shuffle(selected_imgs_idx)
                 indexDtrain = np.array(selected_imgs_idx[:self.k_shot])  # idx for Dtrain
+                #print(selected_imgs_idx)
                 indexDtest = np.array(selected_imgs_idx[self.k_shot:])  # idx for Dtest
                 support_x.append(
                     np.array(self.data[cls])[indexDtrain].tolist())  # get all images filename for current Dtrain
@@ -174,9 +192,10 @@ class MiniImagenet(Dataset):
             # random.shuffle(query_x)
 
             self.support_x_batch.append(support_x)  # append set to current sets
+            #print(self.support_x_batch)
             self.query_x_batch.append(query_x)  # append sets to current sets
             self.selected_classes.append(selected_classes_temp)
-
+   
     def create_batch1(self, batchsz):
         """
         create batch for meta-learning.
@@ -206,12 +225,12 @@ class MiniImagenet(Dataset):
                 selected_classes_temp1.append(cls)
 
             # shuffle the correponding relation between support set and query set
-            random.shuffle(support_x1)
-            random.shuffle(query_x1)
+            # random.shuffle(support_x1)
+            # random.shuffle(query_x1)
 
             self.support_x_batch1.append(support_x1)  # append set to current sets
             self.query_x_batch1.append(query_x1)  # append sets to current sets
-            #print(len(self.query_x_batch1))
+            #print(self.query_x_batch1)
             self.selected_classes1.append(selected_classes_temp1)
 
     def __getitem__(self, index):
@@ -272,89 +291,15 @@ class MiniImagenet(Dataset):
 
         for i, path in enumerate(flatten_query_x):
             query_x[i] = self.transform(path)
+            
+        #print(len(support_x))
 
-        """"""
-        # [setsz, 3, resize, resize]
-        support_x1 = torch.FloatTensor(self.setsz, 3, self.resize, self.resize)
-        # [setsz]
-        #support_y = np.zeros((self.setsz), dtype=np.int32)
-        # [querysz, 3, resize, resize]
-        query_x1 = torch.FloatTensor(self.querysz, 3, self.resize, self.resize)
-        # [querysz]
-        #query_y = np.zeros((self.querysz), dtype=np.int32)
-
-        flatten_support_x1 = [os.path.join(self.path, item)
-                             for sublist in self.support_x_batch1[index] for item in sublist]
-        # support_y = np.array(
-        #     [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
-        #      for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
-        
-        support_y_list1 = []
-        for i in range(len(self.support_x_batch1[index])):
-            class_temp1 = np.repeat(self.selected_classes1[index][i], len(self.support_x_batch1[index][i]))
-            support_y_list1.append(class_temp1)
-        support_y1 = np.array(support_y_list1).flatten().astype(np.int32)
-
-        flatten_query_x1 = [os.path.join(self.path, item)
-                           for sublist in self.query_x_batch1[index] for item in sublist]
-        # query_y = np.array([self.img2label[item[:9]]
-        #                     for sublist in self.query_x_batch[index] for item in sublist]).astype(np.int32)
-        
-        query_y_list1 = []
-        for i in range(len(self.query_x_batch1[index])):
-            class_temp1 = np.repeat(self.selected_classes1[index][i], len(self.query_x_batch1[index][i]))
-            query_y_list1.append(class_temp1)
-        query_y1 = np.array(query_y_list1).flatten().astype(np.int32)
-        # print(query_y_list1)
-        # print(query_y_list)
-        # print('global:', support_y, query_y)
-        # support_y: [setsz]
-        # query_y: [querysz]
-        # unique: [n-way], sorted
-        unique1 = np.unique(support_y1)
-        random.shuffle(unique1)
-
-        # relative means the label ranges from 0 to n-way
-        support_y_relative1 = np.zeros(self.setsz)
-        query_y_relative1 = np.zeros(self.querysz)
-        for idx, l in enumerate(unique1):
-            support_y_relative1[support_y1 == l] = idx
-            query_y_relative1[query_y1 == l] = idx
-            # support_y_relative1[support_y1 == l] = idx+2
-            # query_y_relative1[query_y1 == l] = idx+2
-
-
-        # print('relative:', support_y_relative, query_y_relative)
-
-        for i, path in enumerate(flatten_support_x1):
-            support_x1[i] = self.transform(path)
-
-        for i, path in enumerate(flatten_query_x1):
-            query_x1[i] = self.transform(path)
-
-        #support_x2 = support_x + support_x1
-        support_x2 = np.concatenate((support_x, support_x1), axis=0)
-        support_y_relative2 = np.append(support_y_relative, support_y_relative1)
-        #support_y_relative2 = np.vstack((support_y_relative, support_y_relative1))
-        #query_x2 = query_x + query_x1
-        query_x2 = np.concatenate((query_x, query_x1), axis=0)
-        query_y_relative2 = np.append(query_y_relative, query_y_relative1)
-        #query_y_relative2 = np.vstack((query_y_relative, query_y_relative1))
-        #print(support_y_relative2, query_y_relative2)
-
-        print(len(support_x2))
-        # print(support_x.size())
-        # print(support_x1.size())
-        #print(support_x2.size())
-        # if self.mode == "train":
-        #     return support_x2, torch.LongTensor(support_y_relative2), query_x2, torch.LongTensor(query_y_relative2)
-        # else: 
-        #     return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
-        return support_x2, torch.LongTensor(support_y_relative2), query_x2, torch.LongTensor(query_y_relative2)
-
+        return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
+    
     def __len__(self):
         # as we have built up to batchsz of sets, you can sample some small batch size of sets.
         return self.batchsz
+    
     
 
 from torch import nn
@@ -654,7 +599,9 @@ def mean_confidence_interval(accs, confidence=0.95):
 
 
 n_way = 2
-epochs = 41
+epochs = 10
+k_shot = 5
+k_query = 5
 
 
 def main():
@@ -696,11 +643,11 @@ def main():
     # batchsz here means total episode number
     
     path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
-    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=5,
-                        k_query=15,
+    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=k_shot,
+                        k_query=k_query,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=5,
-                             k_query=15,
+    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=k_shot,
+                             k_query=k_query,
                              batchsz=100, resize=84)
 
     for epoch in tqdm(range(epochs)):
@@ -716,7 +663,7 @@ def main():
             if step % 100 == 0:
                 print('\n','step:', step, '\ttraining acc:', accs)
 
-            if step % 1000 == 0:  # evaluation
+            if step % 1000 == 0 or step == 2400:  # evaluation
                 db_test = DataLoader(mini_test, batch_size=1, shuffle=True, num_workers=4, pin_memory=True)
                 accs_all_test = []
 

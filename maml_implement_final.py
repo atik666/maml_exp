@@ -136,8 +136,8 @@ class MiniImagenet(Dataset):
                 selected_classes_temp.append(cls)
 
             # shuffle the correponding relation between support set and query set
-            # random.shuffle(support_x)
-            # random.shuffle(query_x)
+            random.shuffle(support_x)
+            random.shuffle(query_x)
 
             self.support_x_batch.append(support_x)  # append set to current sets
             self.query_x_batch.append(query_x)  # append sets to current sets
@@ -201,6 +201,8 @@ class MiniImagenet(Dataset):
 
         for i, path in enumerate(flatten_query_x):
             query_x[i] = self.transform(path)
+            
+        #print(support_x.size())
 
         return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
 
@@ -547,10 +549,10 @@ def main():
     # batchsz here means total episode number
     
     path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
-    mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=20,
+    mini_train = MiniImagenet(path, mode='train', n_way=n_way, k_shot=20,
                         k_query=15,
                         batchsz=10000, resize=84)
-    mini_test = MiniImagenet(path, mode='test', n_way=2, k_shot=15,
+    mini_test = MiniImagenet(path, mode='test', n_way=n_way, k_shot=15,
                              k_query=5,
                              batchsz=100, resize=84)
 

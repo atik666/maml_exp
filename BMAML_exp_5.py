@@ -113,8 +113,8 @@ class MiniImagenet(Dataset):
             
             dictLabels = Merge(file_dict, file_neg_dict)
 
-        mode = mode+'/'
-        path1 = os.path.join(root, mode) 
+        mode1 = mode+'/'
+        path1 = os.path.join(root, mode1) 
         
         filenames1 = next(walk(path1))[1]
     
@@ -261,7 +261,7 @@ class MiniImagenet(Dataset):
         for i, path in enumerate(flatten_query_x):
             query_x[i] = self.transform(path)
             
-        #print(support_x)
+        print(support_x)
         """"""
         # [setsz, 3, resize, resize]
         support_x1 = torch.FloatTensor(self.setsz, 3, self.resize, self.resize)
@@ -316,7 +316,7 @@ class MiniImagenet(Dataset):
         for i, path in enumerate(flatten_query_x1):
             query_x1[i] = self.transform(path)
 
-        #print(support_x1)
+        print(support_x1)
         support_x = np.append(support_x, support_x1)
         support_y_relative = np.append(support_y_relative, support_y_relative1)
         query_x = np.append(query_x, query_x1)
