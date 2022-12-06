@@ -1,4 +1,4 @@
-# BAML
+# BMAML
 
 Binary Meta-learning Towards Better Generalization.
 
