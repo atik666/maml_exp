@@ -80,12 +80,12 @@ class MiniImagenet(Dataset):
         self.create_batch1(self.batchsz)
         
         if self.mode == 'train':  
-            # self.support_x_batch = self.support_x_batch +  self.support_x_batch1
-            # self.query_x_batch = self.query_x_batch +  self.query_x_batch1
-            # self.selected_classes = self.selected_classes +  self.selected_classes1
-            self.support_x_batch = self.support_x_batch1
-            self.query_x_batch = self.query_x_batch1
-            self.selected_classes = self.selected_classes1
+            self.support_x_batch = self.support_x_batch +  self.support_x_batch1
+            self.query_x_batch = self.query_x_batch +  self.query_x_batch1
+            self.selected_classes = self.selected_classes +  self.selected_classes1
+            # self.support_x_batch = self.support_x_batch1
+            # self.query_x_batch = self.query_x_batch1
+            # self.selected_classes = self.selected_classes1
             
         elif self.mode == 'test':
             self.support_x_batch = self.support_x_batch
@@ -306,26 +306,20 @@ from torch import nn
 import torch.nn.functional as F
 
 class Learner(nn.Module):
-    """
-    定义一个网络
-    """
+
     def __init__(self, config):
         super(Learner, self).__init__()
-        self.config = config ## 对模型各个超参数的定义
-        '''
-        ## ParameterList可以像普通Python列表一样进行索引，
-        但是它包含的参数已经被正确注册，并且将被所有的Module方法都可见。
-        
-        '''
-        self.vars = nn.ParameterList() ## 这个字典中包含了所有需要被优化的tensor
+        self.config = config 
+
+        self.vars = nn.ParameterList() 
         self.vars_bn = nn.ParameterList()  
         
         for i, (name, param) in enumerate(self.config):
             if name == 'conv2d':
                 ## [ch_out, ch_in, kernel_size, kernel_size]
-                weight = nn.Parameter(torch.ones(*param[:4])) ## 产生*param大小的全为1的tensor
-                torch.nn.init.kaiming_normal_(weight) ## 初始化权重
-                self.vars.append(weight) ## 加到nn.ParameterList中
+                weight = nn.Parameter(torch.ones(*param[:4])) 
+                torch.nn.init.kaiming_normal_(weight) 
+                self.vars.append(weight)
                 
                 bias = nn.Parameter(torch.zeros(param[0]))
                 self.vars.append(bias)
@@ -338,8 +332,7 @@ class Learner(nn.Module):
                 self.vars.append(bias)
             
             elif name == 'bn':
-                ## 对小批量(mini-batch)的2d或3d输入进行批标准化(Batch Normalization)操作,
-                ## BN层在训练过程中，会将一个Batch的中的数据转变成正态分布
+               
                 weight = nn.Parameter(torch.ones(param[0]))
                 self.vars.append(weight)
                 bias = nn.Parameter(torch.zeros(param[0]))
@@ -349,7 +342,7 @@ class Learner(nn.Module):
                 running_mean = nn.Parameter(torch.zeros(param[0]), requires_grad = False)
                 running_var = nn.Parameter(torch.zeros(param[0]), requires_grad = False)
                 
-                self.vars_bn.extend([running_mean, running_var]) ## 在列表附加参数
+                self.vars_bn.extend([running_mean, running_var]) ## 
                 
             elif name in ['tanh', 'relu', 'upsample', 'avg_pool2d', 'max_pool2d',
                           'flatten', 'reshape', 'leakyrelu', 'sigmoid']:
@@ -361,7 +354,7 @@ class Learner(nn.Module):
     
     ## self.net(x_support[i], vars=None, bn_training = True)
     ## x: torch.Size([5, 1, 28, 28])
-    ## 构造模型
+
     def forward(self, x, vars = None, bn_training=True):
         '''
         :param bn_training: set False to not update
@@ -434,14 +427,14 @@ class Meta(nn.Module):
     """
     def __init__(self, config):
         super(Meta, self).__init__()   
-        self.update_lr = 0.1 ## learner中的学习率，即\alpha
-        self.meta_lr = 1e-3 ## meta-learner的学习率，即\beta
-        self.n_way = 5 ## 5种类型
-        self.k_shot = 5 ## 一个样本
-        self.k_query = 15 ## 15个查询样本
-        self.task_num = 4 ## 每轮抽8个任务进行训练
+        self.update_lr = 0.1 ## learner\alpha
+        self.meta_lr = 1e-3 ## meta-learner\beta
+        self.n_way = 5 ## 5
+        self.k_shot = 5 
+        self.k_query = 15 ## 15
+        self.task_num = 4 
         self.update_step = 5 ## task-level inner update steps
-        self.update_step_test = 5 ## 用在finetunning这个函数中
+        self.update_step_test = 5 ## finetunning
         
         self.net = Learner(config) ## base-learner
         self.meta_optim = torch.optim.Adam(self.net.parameters(), lr = self.meta_lr)
@@ -464,27 +457,25 @@ class Meta(nn.Module):
         for i in range(task_num):    
             
             ## 第0步更新
-            logits = self.net(x_support[i], vars=None, bn_training = True)## return 一个经过各层计算后的y
+            logits = self.net(x_support[i], vars=None, bn_training = True)## return
             #print(logits.size())
-            ## logits : 5*5的tensor
-            loss = F.cross_entropy(logits, y_support[i])  ## 计算Loss值
-            grad = torch.autograd.grad(loss, self.net.parameters()) ##计算梯度。如果输入x，输出是y，则求y关于x的导数（梯度）
-            tuples = zip(grad, self.net.parameters() ) ##将梯度grad和参数\theta一一对应起来
-            ## fast_weights这一步相当于求了一个\theta - \alpha*\nabla(L)
+            ## logits : 5*5tensor
+            loss = F.cross_entropy(logits, y_support[i])  ## Loss
+            grad = torch.autograd.grad(loss, self.net.parameters())
+            tuples = zip(grad, self.net.parameters() ) 
+            ## fast_weights\theta - \alpha*\nabla(L)
             fast_weights = list( map(lambda p: p[1] - self.update_lr * p[0], tuples) )
             
-            ### 在query集上进行测试，计算准确率
-            ## 这一步使用的是更新前的参数
+            ### query
             with torch.no_grad():
                 logits_q = self.net(x_query[i], self.net.parameters(), bn_training = True) ## logits_q :torch.Size([75, 5])
                 loss_q = F.cross_entropy(logits_q, y_query[i]) ## y_query : torch.Size([75])
-                losses_q[0] += loss_q ##将loss存在数组的第一个位置
+                losses_q[0] += loss_q #loss
                 pred_q = F.softmax(logits_q, dim = 1).argmax(dim=1) ## size = (75)
-                correct = torch.eq(pred_q, y_query[i]).sum().item()## item()取出tensor中的数字
+                correct = torch.eq(pred_q, y_query[i]).sum().item()## item()
                 corrects[0] += correct
             
-            ### 在query集上进行测试，计算准确率
-            ## 这一步使用的是更新后的参数
+            ### query
             with torch.no_grad():
                 logits_q = self.net(x_query[i], fast_weights, bn_training = True)
                 loss_q = F.cross_entropy(logits_q, y_query[i])
@@ -517,11 +508,11 @@ class Meta(nn.Module):
                     correct = torch.eq(pred_q, y_query[i]).sum().item()
                     corrects[k+1] += correct
                     
-        ## 在一组8个任务结束后，求一个平均的loss
+        ## loss
         loss_q = losses_q[-1] / task_num
-        self.meta_optim.zero_grad() ## 梯度清零
-        loss_q.backward() ## 计算梯度
-        self.meta_optim.step() ## 用设置好的优化方法来迭代模型参数，这一步是meta步迭代
+        self.meta_optim.zero_grad() 
+        loss_q.backward() 
+        self.meta_optim.step() 
         
         accs = np.array(corrects) / (querysz * task_num) 
         
@@ -544,15 +535,12 @@ class Meta(nn.Module):
         grad = torch.autograd.grad(loss, net.parameters())
         fast_weights = list(map(lambda p: p[1] - self.update_lr * p[0], zip(grad, net.parameters())))
         
-        
-        ## 开始训练前的准确率
         with torch.no_grad():
             logits_q = net(x_query, net.parameters(), bn_training = True)
             pred_q = F.softmax(logits_q, dim =1).argmax(dim=1)
             correct = torch.eq(pred_q, y_query).sum().item()
             corrects[0] += correct
          
-        ## 训练后的准确率
         with torch.no_grad():
             logits_q = net(x_query, fast_weights, bn_training = True)
             pred_q = F.softmax(logits_q, dim = 1).argmax(dim=1)
@@ -642,7 +630,7 @@ def main():
 
     # batchsz here means total episode number
     
-    path = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
+    path = '/home/atik/Documents/MAML/Summer_1/datasets/256'
     mini_train = MiniImagenet(path, mode='train', n_way=2, k_shot=k_shot,
                         k_query=k_query,
                         batchsz=10000, resize=84)

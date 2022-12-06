@@ -7,6 +7,7 @@ from tqdm import tqdm
 import copy
 from sklearn.decomposition import PCA
 import sys
+import pickle
 sys.setrecursionlimit(300000)
 print("Python Recursive Limitation = ", sys.getrecursionlimit())
 
@@ -153,6 +154,8 @@ class BMAML():
         # load neg img array  
         img_neg_array = [[cv2.imread(self.path+indx_neg[j][i]) for i in range(len(indx_neg[0]))] \
                         for j in range(len(indx_neg))]
+            
+        #print(img_neg_array)
         # similarity between pos and neg images
         similarity = [[self.orb_sim(img_pos_array[j], img_neg_array[j][i]) for i in range(len(self.image_array_cluster))] \
                       for j in tqdm(range(len(img_pos_array)))]
@@ -163,19 +166,17 @@ class BMAML():
         
         return final_neg_classes, self.classes # selected neg cluster path, selected pos cluster path
     
-root = '/home/admin1/Documents/Atik/Meta_Learning/MAML-Pytorch/datasets/256'
+root = '/home/atik/Documents/MAML/Summer_1/datasets/256'
 mode = 'test'    
 
 # a = BMAML(root,mode, 2).rep_image()
         
-final_neg_classes, classes = BMAML(root, mode, 1).return_item() # takes approx. 2 hours to compute on RTX3080ti
+final_neg_classes, classes = BMAML(root, mode, cluster_num= 1).return_item() # takes approx. 2 hours to compute on RTX3080ti
         
-        
-        
-        
-        
-        
-        
+# Open a file and use dump()
+with open('final_neg_classes.pkl', 'wb') as file:      
+    # A new file will be created
+    pickle.dump(final_neg_classes, file)        
         
         
      
