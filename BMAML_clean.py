@@ -23,7 +23,7 @@ class BMAML():
         self.images = self.images(self.file) # image array from selected file path
         """""" 
         # all selected neg img path, all selected neg img array, neg temp img all 
-        self.neg_clusters, self.neg_images, self.image_array_cluster = self.neg_clusters() 
+        self.neg_clusters, self.neg_images, self.image_array_cluster = self.neg_cluster() 
         # postive representive image index
         self.indx = self.rep_image(self.images, self.classes)
       
@@ -57,7 +57,7 @@ class BMAML():
         return images
     
     # selecting neg image cluster
-    def neg_clusters(self):
+    def neg_cluster(self):
         neg_clusters = []
         neg_images = []
         with tqdm(total=len(self.classes)*self.cluster_num*len(self.file[0])) as pbar:
